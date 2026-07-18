@@ -61,6 +61,10 @@ const C = {
 };
 
 const getApiBase = () => {
+  // Use env variable if set (Vercel production)
+  if (import.meta.env.VITE_BACKEND_URL) {
+    return import.meta.env.VITE_BACKEND_URL;
+  }
   const host = window.location.host;
   if (host.includes("localhost") || host.includes("127.0.0.1")) {
     return "http://localhost:8000";

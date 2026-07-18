@@ -13,9 +13,11 @@ function useMarketStatus() {
   useEffect(() => {
     const check = async () => {
       try {
-        const base = window.location.host.includes("localhost")
-          ? ""
-          : window.location.origin;
+        const base =
+          import.meta.env.VITE_BACKEND_URL ||
+          (window.location.host.includes("localhost")
+            ? "http://localhost:8000"
+            : window.location.origin);
         const res = await fetch(`${base}/api/market-status`);
         const data = await res.json();
         const now = new Date();
