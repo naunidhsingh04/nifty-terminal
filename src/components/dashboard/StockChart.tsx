@@ -104,6 +104,7 @@ export default function StockChart({
   const is4H = interval === "4hour";
   const ltpRef = useRef<number>(ltp);
   const lastRealPrice = useRef<number>(ltp);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Fetch history ───────────────────────────────────────────────────────────
   const fetchHistory = useCallback(async (sym: string, intv: string) => {
@@ -114,10 +115,17 @@ export default function StockChart({
         `${base}/api/history?symbol=${sym}&interval=${intv}`,
       );
       const data = await res.json();
-      const cleaned: Candle[] = (Array.isArray(data) ? data : [])
+      const allCandles: Candle[] = (Array.isArray(data) ? data : [])
         .map((c: Candle) => ({ ...c, time: toTime(c.time) }))
         .filter((c) => c.time > 0 && c.open > 0 && c.close > 0)
         .sort((a, b) => a.time - b.time);
+
+      // Remove duplicate timestamps (keep last occurrence)
+      const seen = new Map<number, Candle>();
+      for (const c of allCandles) {
+        seen.set(c.time, c);
+      }
+      const cleaned = Array.from(seen.values()).sort((a, b) => a.time - b.time);
       setHistCandles(cleaned);
     } catch {
       setHistCandles([]);
@@ -357,7 +365,7 @@ export default function StockChart({
   useEffect(() => {
     if (histCandles.length === 0) return;
 
-    const intervalId = setInterval(() => {
+    intervalRef.current = setInterval(() => {
       const realPrice = lastRealPrice.current;
       if (!realPrice || realPrice <= 0) return;
 
@@ -388,7 +396,9 @@ export default function StockChart({
     }, 500);
 
     ltpRef.current = ltp;
-    return () => clearInterval(intervalId);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [histCandles]);
 
   const rsiColor = currentRSI

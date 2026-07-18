@@ -82,7 +82,7 @@ type WSMessage =
 const getBackendUrl = (): string => {
   // If env variable set (Vercel production build) use it
   if (import.meta.env.VITE_BACKEND_URL) {
-    return import.meta.env.VITE_BACKEND_URL as string;
+    return import.meta.env.VITE_BACKEND_URL;
   }
   // Local dev — use localhost
   const host = window.location.host;
