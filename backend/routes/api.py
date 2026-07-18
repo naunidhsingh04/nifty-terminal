@@ -116,6 +116,10 @@ def get_market_status():
 def health():
     return {"status": "ok", "stocks": len(SYMBOLS), "cached": len(_mem_cache)}
 
+@router.get("/healthz")
+def healthz():
+    return {"status": "ok"}
+
 @router.get("/session-status")
 def session_status_api():
     from services.breeze_service import is_connected
