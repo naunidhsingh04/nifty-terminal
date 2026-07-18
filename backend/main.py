@@ -24,19 +24,14 @@ import breeze_creds as config
 
 IST = pytz.timezone("Asia/Kolkata")
 
-# ── Paths ──────────────────────────────────────────────────────────────────────
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 DIST_DIR   = os.path.abspath(os.path.join(BASE_DIR, "..", "dist"))
 ASSETS_DIR = os.path.join(DIST_DIR, "assets")
-
-# Get public URL for Telegram links
 PUBLIC_URL = os.environ.get("PUBLIC_URL", "http://localhost:8000")
 
-# ── App ────────────────────────────────────────────────────────────────────────
 app = FastAPI(title="Nifty Terminal")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# ── Static assets ──────────────────────────────────────────────────────────────
 if os.path.exists(ASSETS_DIR):
     app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
     print(f"✅ Serving frontend from {DIST_DIR}")
@@ -57,7 +52,6 @@ async def serve_root():
         return FileResponse(index)
     return HTMLResponse("Frontend not built. Run: npm run build", 404)
 
-# ── State ──────────────────────────────────────────────────────────────────────
 price_cache = {}
 session_active = False
 
@@ -68,14 +62,12 @@ def _is_market_open() -> bool:
     total_mins = now.hour * 60 + now.minute
     return 555 <= total_mins <= 930
 
-# ── Tick handler ───────────────────────────────────────────────────────────────
 async def on_tick(sym: str, q: dict):
     global session_active
     session_active = True
     ltp    = q["ltp"]
     volume = q.get("volume", 0)
     market_open = _is_market_open()
-
     price_cache[sym] = {
         "type": "TICK", "symbol": sym, "name": NIFTY50[sym]["name"],
         "ltp": ltp, "open": q.get("open", ltp),
@@ -102,29 +94,23 @@ async def on_tick(sym: str, q: dict):
     if alert:
         await manager.broadcast(alert)
 
-# ── Startup ────────────────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
-    import traceback
-    try:
-        await db_connect()
+    print("🔄 Starting up...")
+    await db_connect()
     base_prices = {sym: NIFTY50[sym]["base"] for sym in SYMBOLS}
     init_live_candles(SYMBOLS, base_prices)
     await load_rsi_states(SYMBOLS)
 
-    from db.database import get_db
     db = get_db()
-
     for sym in SYMBOLS:
         last_price = NIFTY50[sym]["base"]
         try:
-            from db.database import get_db
-            db = get_db()
-            row = db.execute(
+            row = await db.afetchone(
                 "SELECT close FROM candles WHERE symbol=? AND interval='1day' ORDER BY time DESC LIMIT 1",
                 (sym,)
-            ).fetchone()
-            if row and row[0] > 0:
+            )
+            if row and row[0] and row[0] > 0:
                 last_price = row[0]
         except Exception:
             pass
@@ -137,27 +123,23 @@ async def startup():
         }
     print(f"✅ Loaded last known prices for {len(SYMBOLS)} stocks")
 
-    # Volume alert
     async def on_volume_alert(alert: dict):
         await manager.broadcast(alert)
     set_alert_callback(on_volume_alert)
     asyncio.create_task(check_volume_alerts(None, NIFTY50))
     asyncio.create_task(volume_alert_loop(None, NIFTY50))
 
-    # Breakout alert
     async def on_breakout_alert(alert: dict):
         await manager.broadcast(alert)
     set_breakout_callback(on_breakout_alert)
     asyncio.create_task(check_breakout_alerts(None, NIFTY50))
     asyncio.create_task(breakout_alert_loop(None, NIFTY50))
 
-    # Market deals monitor
     async def on_deal_alert(alert: dict):
         await manager.broadcast(alert)
     set_deals_callback(on_deal_alert)
     asyncio.create_task(deals_monitor_loop(NIFTY50))
 
-    # Breeze
     from services.breeze_service import set_tick_callback, set_event_loop, load_session
     set_tick_callback(on_tick)
     set_event_loop(asyncio.get_event_loop())
@@ -169,11 +151,11 @@ async def startup():
         print("⚠ No session — visit /login")
 
     asyncio.create_task(session_watchdog())
-        print("🚀 Nifty Terminal started")
-    except Exception as e:
-        print(f"❌ STARTUP FAILED: {e}")
-        traceback.print_exc()
-        raise
+    print("🚀 Nifty Terminal started")
+
+def get_db():
+    from db.database import get_db as _get_db
+    return _get_db()
 
 async def connect_and_monitor(session: str):
     from services.breeze_service import connect_breeze, is_connected
@@ -190,19 +172,11 @@ async def connect_and_monitor(session: str):
         await asyncio.sleep(10)
 
 async def session_watchdog():
-    """
-    Watches for session expiry.
-    At 8:00 AM IST every day, sends Telegram notification to refresh session.
-    Also broadcasts session_expired to all connected frontends.
-    """
     global session_active
     notified_today = False
-
     while True:
         await asyncio.sleep(60)
         now = datetime.now(IST)
-
-        # Reset at midnight
         if now.hour == 0 and now.minute == 0:
             notified_today = False
             session_active = False
@@ -211,8 +185,6 @@ async def session_watchdog():
                 "message": "Breeze session expired. Please login to refresh.",
                 "loginUrl": f"{PUBLIC_URL}/login",
             })
-
-        # Send Telegram reminder at 8:00 AM
         if now.hour == 8 and now.minute == 0 and not notified_today:
             notified_today = True
             await notify_session_expired(PUBLIC_URL)
@@ -221,7 +193,6 @@ async def session_watchdog():
                 "message": "Breeze session expired. Please login to refresh.",
                 "loginUrl": f"{PUBLIC_URL}/login",
             })
-            print("📱 Telegram session reminder sent")
 
 @app.on_event("shutdown")
 async def shutdown():
@@ -229,7 +200,6 @@ async def shutdown():
     await disconnect()
     await db_disconnect()
 
-# ── WebSocket ──────────────────────────────────────────────────────────────────
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
     await manager.connect(ws)
@@ -238,7 +208,6 @@ async def websocket_endpoint(ws: WebSocket):
         if cache:
             await manager.send_to(ws, cache)
         await manager.send_to(ws, {"type": "RSI_UPDATE", "symbol": sym, "rsi": get_live_rsi(sym)})
-    # Send session status
     if not session_active:
         await manager.send_to(ws, {
             "type": "SESSION_EXPIRED",
@@ -251,12 +220,11 @@ async def websocket_endpoint(ws: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(ws)
 
-# ── Login + Callback ───────────────────────────────────────────────────────────
 @app.get("/login")
 async def login_page():
     url = f"https://api.icicidirect.com/apiuser/login?api_key={config.BREEZE_API_KEY}"
     return HTMLResponse(f"""
-    <html><head><title>Nifty Terminal — Login</title>
+    <html><head><title>Login</title>
     <style>body{{font-family:monospace;background:#0d1117;color:#c9d1d9;
     display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:20px;}}
     a{{color:#58a6ff;font-size:18px;padding:12px 24px;border:1px solid #58a6ff;border-radius:8px;text-decoration:none;}}
@@ -279,9 +247,7 @@ async def breeze_callback(request: Request):
     connected = await connect_breeze(session_token)
     if connected:
         session_active = True
-        # Notify all frontends session is back
         await manager.broadcast({"type": "SESSION_RESTORED"})
-        # Send Telegram confirmation
         await notify_session_refreshed()
         return HTMLResponse("""
         <html><head><style>body{font-family:monospace;background:#0d1117;color:#26a69a;
@@ -291,16 +257,9 @@ async def breeze_callback(request: Request):
         <script>setTimeout(()=>window.close(),2000);</script></body></html>""")
     return HTMLResponse("<html><body style='background:#0d1117;color:#ef5350;font-family:monospace;display:flex;align-items:center;justify-content:center;height:100vh'><h2>❌ Connection failed. Try again.</h2></body></html>")
 
-# ── Session status API ─────────────────────────────────────────────────────────
-@app.get("/api/session-status")
-def session_status():
-    return {"active": session_active, "loginUrl": f"{PUBLIC_URL}/login"}
-
 if __name__ == "__main__":
     print("=" * 55)
     print("  🚀 NIFTY TERMINAL")
-    print("  ⚡ Real-time prices via Breeze WebSocket")
-    print("  📊 Charts via Breeze historical data")
     print(f"  🌐 Frontend: http://localhost:8000")
     print("  🔐 Login: http://localhost:8000/login")
     print("=" * 55)
