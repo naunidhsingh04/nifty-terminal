@@ -94,6 +94,24 @@ async def on_tick(sym: str, q: dict):
     if alert:
         await manager.broadcast(alert)
 
+async def load_last_prices():
+    """Load last known prices from DB in background after startup."""
+    db = get_db()
+    loaded = 0
+    for sym in SYMBOLS:
+        try:
+            row = await db.afetchone(
+                "SELECT close FROM candles WHERE symbol=? AND interval='1day' ORDER BY time DESC LIMIT 1",
+                (sym,)
+            )
+            if row and row[0] and float(row[0]) > 0:
+                price_cache[sym]["ltp"] = float(row[0])
+                price_cache[sym]["open"] = float(row[0])
+                loaded += 1
+        except Exception:
+            pass
+    print(f"✅ Loaded last prices for {loaded}/{len(SYMBOLS)} stocks from DB")
+
 @app.on_event("startup")
 async def startup():
     print("🔄 Starting up...")
@@ -102,18 +120,9 @@ async def startup():
     init_live_candles(SYMBOLS, base_prices)
     await load_rsi_states(SYMBOLS)
 
-    db = get_db()
+    # Initialize all stocks with base prices first (fast)
     for sym in SYMBOLS:
         last_price = NIFTY50[sym]["base"]
-        try:
-            row = await db.afetchone(
-                "SELECT close FROM candles WHERE symbol=? AND interval='1day' ORDER BY time DESC LIMIT 1",
-                (sym,)
-            )
-            if row and row[0] and row[0] > 0:
-                last_price = row[0]
-        except Exception:
-            pass
         price_cache[sym] = {
             "type": "TICK", "symbol": sym, "name": NIFTY50[sym]["name"],
             "ltp": last_price, "open": last_price,
@@ -121,7 +130,10 @@ async def startup():
             "change": 0.0, "change_percent": 0.0,
             "volume": 0, "marketOpen": False,
         }
-    print(f"✅ Loaded last known prices for {len(SYMBOLS)} stocks")
+    print(f"✅ Initialized {len(SYMBOLS)} stocks with base prices")
+
+    # Load last known prices from DB in background
+    asyncio.create_task(load_last_prices())
 
     async def on_volume_alert(alert: dict):
         await manager.broadcast(alert)
