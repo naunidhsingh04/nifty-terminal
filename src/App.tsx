@@ -91,8 +91,8 @@ export default function App() {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-[#0d1117] overflow-hidden font-mono">
-      {/* Session Expired Banner */}
-      {sessionExpired && (
+      {/* Session Expired Banner — only show on weekdays */}
+      {sessionExpired && marketStatus.isOpen && (
         <div className="flex items-center justify-between px-4 py-2 bg-[#3d1a1a] border-b border-[#ef5350] text-sm font-mono shrink-0 z-30">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#ef5350] animate-pulse" />
