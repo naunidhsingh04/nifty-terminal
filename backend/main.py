@@ -105,7 +105,9 @@ async def on_tick(sym: str, q: dict):
 # ── Startup ────────────────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
-    await db_connect()
+    import traceback
+    try:
+        await db_connect()
     base_prices = {sym: NIFTY50[sym]["base"] for sym in SYMBOLS}
     init_live_candles(SYMBOLS, base_prices)
     await load_rsi_states(SYMBOLS)
@@ -116,9 +118,14 @@ async def startup():
     for sym in SYMBOLS:
         last_price = NIFTY50[sym]["base"]
         try:
-            doc = await db["candles_1day"].find_one({"symbol": sym}, sort=[("time", -1)])
-            if doc and doc.get("close", 0) > 0:
-                last_price = doc["close"]
+            from db.database import get_db
+            db = get_db()
+            row = db.execute(
+                "SELECT close FROM candles WHERE symbol=? AND interval='1day' ORDER BY time DESC LIMIT 1",
+                (sym,)
+            ).fetchone()
+            if row and row[0] > 0:
+                last_price = row[0]
         except Exception:
             pass
         price_cache[sym] = {
@@ -134,15 +141,15 @@ async def startup():
     async def on_volume_alert(alert: dict):
         await manager.broadcast(alert)
     set_alert_callback(on_volume_alert)
-    asyncio.create_task(check_volume_alerts(db, NIFTY50))
-    asyncio.create_task(volume_alert_loop(db, NIFTY50))
+    asyncio.create_task(check_volume_alerts(None, NIFTY50))
+    asyncio.create_task(volume_alert_loop(None, NIFTY50))
 
     # Breakout alert
     async def on_breakout_alert(alert: dict):
         await manager.broadcast(alert)
     set_breakout_callback(on_breakout_alert)
-    asyncio.create_task(check_breakout_alerts(db, NIFTY50))
-    asyncio.create_task(breakout_alert_loop(db, NIFTY50))
+    asyncio.create_task(check_breakout_alerts(None, NIFTY50))
+    asyncio.create_task(breakout_alert_loop(None, NIFTY50))
 
     # Market deals monitor
     async def on_deal_alert(alert: dict):
@@ -162,7 +169,11 @@ async def startup():
         print("⚠ No session — visit /login")
 
     asyncio.create_task(session_watchdog())
-    print("🚀 Nifty Terminal started")
+        print("🚀 Nifty Terminal started")
+    except Exception as e:
+        print(f"❌ STARTUP FAILED: {e}")
+        traceback.print_exc()
+        raise
 
 async def connect_and_monitor(session: str):
     from services.breeze_service import connect_breeze, is_connected
