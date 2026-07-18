@@ -27,4 +27,33 @@ Thumbs.db
 
 # IDE
 .vscode/
+.idea/# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Build
+dist/
+
+# Python
+*.egg-info/
+.venv/
+venv/
+
+# Local SQLite db
+nifty_terminal.db
+session_state.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
 .idea/
