@@ -17,7 +17,9 @@ _local_conn = None  # local sqlite3 connection
 # ── Turso HTTP API wrapper ─────────────────────────────────────────────────────
 async def _turso_execute(sql: str, params: tuple = ()):
     """Execute a single statement on Turso via HTTP API."""
-    url = f"{TURSO_URL}/v2/pipeline"
+    # Convert libsql:// to https:// for HTTP API calls
+    base = TURSO_URL.replace("libsql://", "https://")
+    url = f"{base}/v2/pipeline"
     headers = {
         "Authorization": f"Bearer {TURSO_TOKEN}",
         "Content-Type": "application/json",
@@ -68,7 +70,8 @@ async def _turso_run(sql: str, params: tuple = ()):
 async def _turso_script(sql: str):
     """Run multiple statements separated by semicolons."""
     statements = [s.strip() for s in sql.split(";") if s.strip()]
-    url = f"{TURSO_URL}/v2/pipeline"
+    base = TURSO_URL.replace("libsql://", "https://")
+    url = f"{base}/v2/pipeline"
     headers = {
         "Authorization": f"Bearer {TURSO_TOKEN}",
         "Content-Type": "application/json",
