@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/components/dashboard/stockchart.tsx","./src/components/dashboard/watchlist.tsx","./src/components/shared/alertpanel.tsx","./src/hooks/usemarketdata.ts","./src/utils/indicators.ts"],"version":"5.6.3"}

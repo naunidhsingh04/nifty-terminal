@@ -1,0 +1,9 @@
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+motor==3.6.0
+pymongo==4.10.0
+breeze-connect==1.0.67
+pytz==2024.2
+aiohttp==3.11.0
+python-dotenv==1.0.1
+httpx==0.28.0
