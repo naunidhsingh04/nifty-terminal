@@ -95,7 +95,7 @@ export default function StockChart({
     ISeriesApi<"Candlestick">["createPriceLine"]
   > | null>(null);
 
-  const [interval, setInterval] = useState("1day");
+  const [interval, setActiveInterval] = useState("1day");
   const [histCandles, setHistCandles] = useState<Candle[]>([]);
   const [loading, setLoading] = useState(false);
   const [ohlc, setOhlc] = useState<Candle | null>(null);
@@ -104,7 +104,7 @@ export default function StockChart({
   const is4H = interval === "4hour";
   const ltpRef = useRef<number>(ltp);
   const lastRealPrice = useRef<number>(ltp);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const intervalRef = useRef<number | null>(null);
 
   // ── Fetch history ───────────────────────────────────────────────────────────
   const fetchHistory = useCallback(async (sym: string, intv: string) => {
@@ -365,7 +365,7 @@ export default function StockChart({
   useEffect(() => {
     if (histCandles.length === 0) return;
 
-    intervalRef.current = setInterval(() => {
+    intervalRef.current = window.setInterval(() => {
       const realPrice = lastRealPrice.current;
       if (!realPrice || realPrice <= 0) return;
 
@@ -397,7 +397,7 @@ export default function StockChart({
 
     ltpRef.current = ltp;
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) window.clearInterval(intervalRef.current);
     };
   }, [histCandles]);
 
@@ -416,7 +416,7 @@ export default function StockChart({
         {INTERVALS.map((iv) => (
           <button
             key={iv.value}
-            onClick={() => setInterval(iv.value)}
+            onClick={() => setActiveInterval(iv.value)}
             className={`px-2.5 py-0.5 text-[11px] font-mono rounded transition-all ${
               interval === iv.value
                 ? "bg-[#1e3a5f] text-[#58a6ff] border border-[#2d5a9f]"
