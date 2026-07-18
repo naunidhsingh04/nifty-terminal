@@ -118,7 +118,8 @@ async def startup():
     await db_connect()
     base_prices = {sym: NIFTY50[sym]["base"] for sym in SYMBOLS}
     init_live_candles(SYMBOLS, base_prices)
-    await load_rsi_states(SYMBOLS)
+    # Load RSI states in background — don't block startup
+    asyncio.create_task(load_rsi_states(SYMBOLS))
 
     # Initialize all stocks with base prices first (fast)
     for sym in SYMBOLS:
