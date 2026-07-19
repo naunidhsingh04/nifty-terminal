@@ -42,7 +42,7 @@ export default function Watchlist({
       <div className="px-3 py-3 border-b border-[#1e2d3d]">
         <div className="flex items-center justify-between mb-2">
           <span className="font-mono text-[13px] font-bold text-[#c9d1d9] tracking-wider">
-            NIFTY 509
+            NIFTY 500
           </span>
           <div className="flex gap-2 text-[10px] font-mono">
             <span className="text-[#26a69a]">▲{gainers}</span>
