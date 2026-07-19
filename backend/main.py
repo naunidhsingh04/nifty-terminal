@@ -17,7 +17,7 @@ from services.volume_alert_service import volume_alert_loop, set_alert_callback,
 from services.breakout_alert_service import breakout_alert_loop, set_breakout_callback, check_breakout_alerts
 from services.market_deals_service import deals_monitor_loop, set_deals_callback
 from services.rsi_service import load_rsi_states, process_4h_rsi, get_live_rsi
-from services.telegram_service import notify_session_expired, notify_session_refreshed
+from services.discord_service import notify_session_expired, notify_session_refreshed
 from services.ws_manager import manager
 from routes.api import router
 import breeze_creds as config
