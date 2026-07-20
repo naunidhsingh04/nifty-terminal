@@ -133,9 +133,11 @@ async def connect():
     if IS_TURSO:
         print(f"✅ Turso connected → {TURSO_URL}")
     else:
-        _local_conn = sqlite3.connect("nifty_terminal.db", check_same_thread=False)
+        # Use /tmp for SQLite to avoid filling Railway's ephemeral storage
+        db_path = "/tmp/nifty_terminal.db" if os.path.exists("/tmp") else "nifty_terminal.db"
+        _local_conn = sqlite3.connect(db_path, check_same_thread=False)
         _local_conn.row_factory = sqlite3.Row
-        print("✅ SQLite connected → nifty_terminal.db")
+        print(f"✅ SQLite connected → {db_path}")
 
     await create_tables()
 
