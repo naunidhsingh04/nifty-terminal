@@ -18,6 +18,7 @@ from services.breakout_alert_service import breakout_alert_loop, set_breakout_ca
 from services.market_deals_service import deals_monitor_loop, set_deals_callback
 from services.rsi_service import load_rsi_states, process_4h_rsi, get_live_rsi
 from services.discord_service import notify_session_expired, notify_session_refreshed
+from services.day_high_service import day_high_alert_loop, set_day_high_callback
 from services.ws_manager import manager
 from routes.api import router
 import breeze_creds as config
@@ -152,6 +153,13 @@ async def startup():
         await manager.broadcast(alert)
     set_deals_callback(on_deal_alert)
     asyncio.create_task(deals_monitor_loop(NIFTY50))
+
+    # ── Day High alert ────────────────────────────────────────────────────────
+    async def on_day_high_alert(alert: dict):
+        await manager.broadcast(alert)
+
+    set_day_high_callback(on_day_high_alert)
+    asyncio.create_task(day_high_alert_loop(price_cache, NIFTY50))
 
     from services.breeze_service import set_tick_callback, set_event_loop, load_session
     set_tick_callback(on_tick)
