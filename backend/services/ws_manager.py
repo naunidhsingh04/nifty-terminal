@@ -14,7 +14,7 @@ class ConnectionManager:
     def disconnect(self, ws: WebSocket):
         if ws in self.clients:
             self.clients.remove(ws)
-        print(f"🔌 Client disconnected. Total: {len(self.clients)}")
+            print(f"🔌 Client disconnected. Total: {len(self.clients)}")
 
     async def broadcast(self, data: dict):
         if not self.clients:
@@ -27,12 +27,14 @@ class ConnectionManager:
             except Exception:
                 dead.append(client)
         for d in dead:
-            self.disconnect(d)
+            if d in self.clients:
+                self.clients.remove(d)
 
     async def send_to(self, ws: WebSocket, data: dict):
         try:
             await ws.send_text(json.dumps(data))
         except Exception:
-            self.disconnect(ws)
+            if ws in self.clients:
+                self.clients.remove(ws)
 
 manager = ConnectionManager()
