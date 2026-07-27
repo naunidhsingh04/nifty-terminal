@@ -2,15 +2,15 @@
   "rewrites": [
     {
       "source": "/callback",
-      "destination": "https://romantic-acceptance-production-b8b3.up.railway.app/callback"
+      "destination": "https://romantic-acceptance-production-92b3.up.railway.app/callback"
     },
     {
       "source": "/api/:path*",
-      "destination": "https://romantic-acceptance-production-b8b3.up.railway.app/api/:path*"
+      "destination": "https://romantic-acceptance-production-92b3.up.railway.app/api/:path*"
     },
     {
       "source": "/login",
-      "destination": "https://romantic-acceptance-production-b8b3.up.railway.app/login"
+      "destination": "https://romantic-acceptance-production-92b3.up.railway.app/login"
     },
     {
       "source": "/(.*)",
